@@ -1,0 +1,95 @@
+<!-- Submission History View -->
+<div class="view-header">
+  <div class="view-title-wrap">
+    <h1 class="view-title">Submission History</h1>
+    <p class="view-subtitle">Every solution you have submitted, with its verdict and diagnosis.</p>
+  </div>
+</div>
+
+<div class="filters-toolbar">
+  <div class="search-input-group">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" class="input-modern" placeholder="Filter by problem or mistake category..." ng-model="filters.search" aria-label="Filter submissions">
+  </div>
+  <div class="filter-pills-row">
+    <span class="filter-group-label">Verdict:</span>
+    <button type="button" class="filter-chip" ng-class="{'active': filters.status === s}" ng-repeat="s in statuses" ng-click="filters.status = s">{{ s }}</button>
+  </div>
+</div>
+
+<div class="state-panel" ng-if="state.loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading submissions...</div>
+<div class="state-panel state-error" ng-if="state.error"><i class="fa-solid fa-triangle-exclamation"></i> {{ state.error }}</div>
+
+<div class="card-panel" style="padding: 0; overflow: hidden;" ng-if="!state.loading && !state.error">
+  <div class="empty-inline" style="padding: 2.5rem;" ng-if="!submissions.length">
+    You have not submitted any solutions yet. <a href="#!/problems">Pick a problem →</a>
+  </div>
+  <div style="overflow-x: auto;" ng-if="submissions.length">
+    <table class="problems-table">
+      <thead>
+        <tr><th>When</th><th>Problem</th><th>Language</th><th>Verdict</th><th>Tests</th><th>Runtime</th><th>Memory</th><th>Mistake</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="s in filteredSubs = (submissions | filter:submissionFilter)">
+          <td style="color: #94a3b8; white-space: nowrap;" title="{{ s.timestamp | date:'medium' }}">{{ s.timestamp | timeAgo }}</td>
+          <td>
+            <a href="#!/solve/{{ s.problemId }}" class="table-problem-title">{{ s.problemTitle }}</a>
+            <div class="table-problem-sub">{{ s.topic }} · {{ s.difficulty }}</div>
+          </td>
+          <td><span class="lang-tag">{{ s.language | languageName }}</span></td>
+          <td><span class="badge {{ s.status | verdictBadge }}">{{ s.status }}</span></td>
+          <td style="font-family: var(--font-mono); color: #cbd5e1;">{{ s.testCasesPassed }}/{{ s.totalTestCases }}</td>
+          <td style="font-family: var(--font-mono); color: #cbd5e1;">{{ s.runtime || 'N/A' }}</td>
+          <td style="font-family: var(--font-mono); color: #cbd5e1;">{{ s.memory || 'N/A' }}</td>
+          <td>
+            <span class="badge" ng-if="s.mistakeCategory" ng-class="s.mistakeCategory === 'Unclassified' ? 'badge-info' : 'badge-danger'">
+              {{ s.analysis.confidence === 'possible' && s.mistakeCategory !== 'Unclassified' ? 'Possible: ' : '' }}{{ s.mistakeCategory }}
+            </span>
+            <span ng-if="!s.mistakeCategory" style="color: #475569;">—</span>
+          </td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="open(s)"><i class="fa-solid fa-eye"></i> View</button>
+          </td>
+        </tr>
+        <tr ng-if="!filteredSubs.length">
+          <td colspan="9" style="text-align: center; padding: 2rem; color: #94a3b8;">No submissions match the filters.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Submission detail modal -->
+<div class="modal-overlay" ng-if="selected" ng-click="close()">
+  <div class="modal-card modal-wide" ng-click="$event.stopPropagation()" role="dialog" aria-label="Submission details">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <span class="badge {{ selected.status | verdictBadge }}">{{ selected.status }}</span>
+        {{ selected.problemTitle }}
+      </h3>
+      <button type="button" ng-click="close()" style="color: #94a3b8; font-size: 1.1rem;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="result-summary" ng-class="selected.status === 'Accepted' ? 'ok' : 'bad'">
+        <div><span>Language</span><strong>{{ selected.language | languageName }}</strong></div>
+        <div><span>Submitted</span><strong>{{ selected.timestamp | date:'medium' }}</strong></div>
+        <div><span>Tests</span><strong>{{ selected.testCasesPassed }} / {{ selected.totalTestCases }}</strong></div>
+        <div><span>Runtime</span><strong>{{ selected.runtime || 'N/A' }}</strong></div>
+        <div><span>Memory</span><strong>{{ selected.memory || 'N/A' }}</strong></div>
+      </div>
+      <div analysis-card="selected.analysis" ng-if="selected.analysis"></div>
+      <div>
+        <div class="section-label">Code</div>
+        <pre class="code-view">{{ selected.code }}</pre>
+      </div>
+      <div ng-if="selected.testResults.length">
+        <div class="section-label">Test results</div>
+        <div test-result-list="selected.testResults"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-modern btn-secondary" ng-click="close()">Close</button>
+      <button type="button" class="btn-modern btn-primary" ng-click="openInEditor(selected)"><i class="fa-solid fa-code"></i> Open in Editor</button>
+    </div>
+  </div>
+</div>

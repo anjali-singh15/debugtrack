@@ -1,0 +1,181 @@
+<!-- Student Profile View -->
+<div class="view-header">
+  <div class="view-title-wrap">
+    <h1 class="view-title">Student Profile</h1>
+    <p class="view-subtitle">Your account, progress and milestones.</p>
+  </div>
+  <div ng-if="d">
+    <button type="button" class="btn-modern btn-secondary" ng-click="openEditModal()">
+      <i class="fa-solid fa-user-pen"></i> Edit Profile
+    </button>
+  </div>
+</div>
+
+<div class="state-panel" ng-if="state.loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading profile...</div>
+<div class="state-panel state-error" ng-if="state.error"><i class="fa-solid fa-triangle-exclamation"></i> {{ state.error }}</div>
+
+<div ng-if="!state.loading && !state.error">
+
+  <!-- Profile Header -->
+  <div class="profile-header-card">
+    <div class="profile-avatar-large">{{ d.user.avatarInitials }}</div>
+    <div class="profile-info">
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <h2 class="profile-name">{{ d.user.name }}</h2>
+        <span class="badge badge-cyan"><i class="fa-solid fa-graduation-cap"></i> {{ d.user.role }}</span>
+        <span class="badge badge-warning" title="Ranked by distinct problems solved"><i class="fa-solid fa-trophy"></i> Rank #{{ d.stats.rank }} of {{ d.stats.totalUsers }}</span>
+      </div>
+      <div class="profile-sub">
+        <span ng-if="d.user.university"><i class="fa-solid fa-building-columns"></i> {{ d.user.university }}</span>
+        <span ng-if="d.user.university">•</span>
+        <span><i class="fa-solid fa-envelope"></i> {{ d.user.email }}</span>
+        <span>•</span>
+        <span><i class="fa-solid fa-calendar"></i> Member since {{ d.user.createdAt | date:'MMMM yyyy' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Strip -->
+  <div class="stats-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+      <div class="stat-header"><span class="stat-label">Problems Solved</span><div class="stat-icon-wrap stat-icon-cyan"><i class="fa-solid fa-code"></i></div></div>
+      <div class="stat-value">{{ d.stats.problemsSolved }}</div>
+      <div class="stat-footer neutral">{{ d.stats.problemsAttempted }} attempted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header"><span class="stat-label">Accuracy</span><div class="stat-icon-wrap stat-icon-emerald"><i class="fa-solid fa-bullseye"></i></div></div>
+      <div class="stat-value">{{ d.stats.accuracy }}%</div>
+      <div class="stat-footer neutral">{{ d.stats.acceptedSubmissions }} accepted submissions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header"><span class="stat-label">Total Submissions</span><div class="stat-icon-wrap stat-icon-blue"><i class="fa-solid fa-server"></i></div></div>
+      <div class="stat-value">{{ d.stats.totalSubmissions }}</div>
+      <div class="stat-footer neutral"><i class="fa-solid fa-fire"></i> {{ d.stats.currentStreak }}-day streak</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header"><span class="stat-label">Weakest Topic</span><div class="stat-icon-wrap stat-icon-amber"><i class="fa-solid fa-layer-group"></i></div></div>
+      <div class="stat-value stat-value-sm">{{ d.stats.weakestTopic ? d.stats.weakestTopic.topic : '—' }}</div>
+      <div class="stat-footer neutral" ng-if="d.stats.weakestTopic">{{ d.stats.weakestTopic.accuracy }}% accuracy</div>
+      <div class="stat-footer neutral" ng-if="!d.stats.weakestTopic">Not enough data yet</div>
+    </div>
+  </div>
+
+  <div class="dashboard-split-grid">
+    <!-- Topic proficiency -->
+    <div class="card-panel">
+      <div class="card-title-bar">
+        <div>
+          <h3 class="card-heading"><i class="fa-solid fa-layer-group"></i> Topic Progress</h3>
+          <p class="card-subtext">Solved problems per topic (accuracy in brackets)</p>
+        </div>
+      </div>
+      <div class="skills-list">
+        <div class="skill-bar-row" ng-repeat="t in d.topicStats">
+          <div class="skill-info">
+            <span style="color: #fff;">{{ t.topic }}</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 0.75rem; color: #94a3b8;">{{ t.status }}<span ng-if="t.accuracy != null"> ({{ t.accuracy }}%)</span></span>
+              <span style="font-family: var(--font-mono); color: var(--cyan);">{{ t.solved }}/{{ t.totalProblems }}</span>
+            </div>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill fill-cyan" ng-style="{'width': (t.totalProblems ? (t.solved / t.totalProblems) * 100 : 0) + '%'}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly Activity -->
+    <div class="card-panel">
+      <div class="card-title-bar">
+        <div>
+          <h3 class="card-heading"><i class="fa-solid fa-chart-simple"></i> Last 7 Days</h3>
+          <p class="card-subtext">Submissions per day</p>
+        </div>
+      </div>
+      <div class="heatmap-grid" style="height: 180px;">
+        <div class="heatmap-col" ng-repeat="day in d.last7Days">
+          <div class="heatmap-bar" ng-style="{'height': day.height + 'px'}" title="{{ day.date | date:'EEE d MMM' }}: {{ day.count }} submissions"></div>
+          <span class="heatmap-day">{{ day.day }}</span>
+          <span style="font-size: 0.72rem; font-family: var(--font-mono); color: #cbd5e1;">{{ day.count }}</span>
+        </div>
+      </div>
+      <div class="profile-foot">
+        <span>Most frequent mistake: <strong>{{ d.stats.mostFrequentMistake ? d.stats.mostFrequentMistake.name : '—' }}</strong></span>
+        <span>Total mistakes: <strong style="color: var(--cyan);">{{ d.stats.totalMistakes }}</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solved problems -->
+  <div class="card-panel" style="margin-bottom: 1.5rem;">
+    <div class="card-title-bar">
+      <div>
+        <h3 class="card-heading"><i class="fa-solid fa-circle-check"></i> Solved Problems ({{ d.solvedProblems.length }})</h3>
+      </div>
+    </div>
+    <div class="empty-inline" ng-if="!d.solvedProblems.length">No problems solved yet. <a href="#!/problems">Start practising →</a></div>
+    <div class="solved-chips">
+      <a class="solved-chip" ng-repeat="p in d.solvedProblems" href="#!/solve/{{ p.id }}">
+        <span class="badge {{ p.difficulty | difficultyBadge }}">{{ p.difficulty }}</span> {{ p.title }}
+      </a>
+    </div>
+  </div>
+
+  <!-- Achievements (computed from real submissions) -->
+  <div class="card-panel">
+    <div class="card-title-bar">
+      <div>
+        <h3 class="card-heading"><i class="fa-solid fa-award"></i> Achievements</h3>
+        <p class="card-subtext">Unlocked automatically from your submission history</p>
+      </div>
+    </div>
+    <div class="achievements-grid">
+      <div class="achievement-card" ng-class="{'locked': !ach.unlocked}" ng-repeat="ach in d.achievements">
+        <div class="ach-icon">{{ ach.icon }}</div>
+        <div class="ach-content">
+          <div class="ach-title">{{ ach.title }}</div>
+          <div class="ach-desc">{{ ach.description }}</div>
+          <div style="margin-top: 0.4rem;">
+            <span class="badge badge-success" style="font-size: 0.65rem;" ng-if="ach.unlocked">Unlocked</span>
+            <span class="badge badge-warning" style="font-size: 0.65rem;" ng-if="!ach.unlocked">{{ ach.progress }}% complete</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" ng-if="showEditModal">
+  <div class="modal-card" role="dialog" aria-label="Edit profile">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Profile</h3>
+      <button type="button" ng-click="closeEditModal()" style="color: #94a3b8; font-size: 1.1rem;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form ng-submit="saveProfile()" novalidate>
+      <div class="modal-body">
+        <div>
+          <label class="form-label" for="edit-name">Full name</label>
+          <input id="edit-name" type="text" class="input-modern input-plain" ng-class="{'input-invalid': editErrors.name}" ng-model="editProfileData.name" maxlength="60">
+          <div class="field-error" ng-if="editErrors.name">{{ editErrors.name }}</div>
+        </div>
+        <div>
+          <label class="form-label" for="edit-uni">University / College</label>
+          <input id="edit-uni" type="text" class="input-modern input-plain" ng-model="editProfileData.university" maxlength="100">
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input type="email" class="input-modern input-plain" ng-value="d.user.email" disabled>
+          <p class="form-hint">Email is your login and cannot be changed here. Change your password from Settings → Account.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-modern btn-secondary" ng-click="closeEditModal()">Cancel</button>
+        <button type="submit" class="btn-modern btn-primary" ng-disabled="savingProfile">
+          <i class="fa-solid fa-spinner fa-spin" ng-if="savingProfile"></i> Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

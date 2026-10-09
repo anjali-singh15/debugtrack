@@ -1,0 +1,319 @@
+<!-- Problem Workspace & Dual Pane IDE -->
+<div class="state-panel" ng-if="state.loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading problem...</div>
+<div class="state-panel state-error" ng-if="state.error">
+  <i class="fa-solid fa-triangle-exclamation"></i> {{ state.error }}
+  <a href="#!/problems" class="btn-modern btn-secondary btn-sm">Back to Problems</a>
+</div>
+
+<div class="solve-container" ng-if="!state.loading && !state.error">
+
+  <!-- LEFT PANE: Problem Specification & Hints -->
+  <div class="solve-pane solve-pane-problem">
+    <div class="pane-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="#!/problems" class="btn-modern btn-secondary btn-sm" title="Back to Problem Catalog">
+          <i class="fa-solid fa-arrow-left"></i> Problems
+        </a>
+        <span class="badge {{ problem.difficulty | difficultyBadge }}">{{ problem.difficulty }}</span>
+        <span class="badge badge-cyan">{{ problem.topic }}</span>
+      </div>
+      <span class="status-pill {{ problem.status | statusBadge }}">
+        <i class="fa-solid" ng-class="problem.status === 'Solved' ? 'fa-check' : 'fa-circle'" style="font-size: 7px;"></i> {{ problem.status }}
+      </span>
+    </div>
+
+    <div class="pane-scrollable">
+      <!-- Title & Header -->
+      <div>
+        <h2 class="solve-problem-title">{{ problem.number }}. {{ problem.title }}</h2>
+        <div style="font-size: 0.78rem; color: #94a3b8;">
+          Acceptance: <strong style="color: #cbd5e1;">{{ problem.acceptanceRate != null ? problem.acceptanceRate + '%' : '—' }}</strong> •
+          Your attempts: <strong style="color: #cbd5e1;">{{ problem.attempts }}</strong> •
+          Mistake-prone area: <span style="color: #f59e0b;">{{ problem.mistakeProneArea }}</span>
+        </div>
+      </div>
+
+      <!-- Recommendation Callout -->
+      <div class="mistake-warning-banner" ng-if="problem.recommendedReason">
+        <i class="fa-solid fa-star"></i>
+        <div>
+          <div style="font-weight: 700; font-size: 0.82rem; color: #fb7185;">Why this problem was recommended</div>
+          <div style="font-size: 0.78rem; color: #cbd5e1;">{{ problem.recommendedReason }}</div>
+        </div>
+      </div>
+
+      <!-- Problem Statement -->
+      <div>
+        <div class="section-label">Problem Statement</div>
+        <p class="statement-text" style="white-space: pre-line;" ng-bind-html="problem.description | richText"></p>
+      </div>
+
+      <!-- Examples -->
+      <div>
+        <div class="section-label">Examples</div>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="example-box" ng-repeat="ex in problem.examples">
+            <span class="example-title">Example {{ $index + 1 }}:</span>
+            <div><span style="color: #94a3b8;">Input:</span> <span style="color: #67e8f9;">{{ ex.input }}</span></div>
+            <div><span style="color: #94a3b8;">Output:</span> <span style="color: #a7f3d0;">{{ ex.output }}</span></div>
+            <div ng-if="ex.explanation"><span style="color: #94a3b8;">Explanation:</span> <span style="color: #cbd5e1;">{{ ex.explanation }}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Constraints -->
+      <div>
+        <div class="section-label">Constraints</div>
+        <ul class="constraints-list">
+          <li ng-repeat="c in problem.constraints">{{ c }}</li>
+        </ul>
+      </div>
+
+      <!-- Interactive Hints -->
+      <div>
+        <div class="section-label">Hints</div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="hint-accordion" ng-repeat="hint in problem.hints">
+            <button type="button" class="hint-summary" ng-click="toggleHint($index)" aria-expanded="{{ !!openHints[$index] }}">
+              <span><i class="fa-solid fa-lightbulb" style="color: #fbbf24; margin-right: 6px;"></i> Hint {{ $index + 1 }}</span>
+              <i class="fa-solid" ng-class="openHints[$index] ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size: 0.75rem; color: #94a3b8;"></i>
+            </button>
+            <div class="hint-body" ng-if="openHints[$index]" ng-bind-html="hint | richText"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testing-note">
+        <i class="fa-solid fa-circle-info"></i>
+        <span><strong>Run Code</strong> executes the {{ problem.sampleTests.length }} sample tests. <strong>Submit</strong> also runs {{ problem.hiddenTestCount }} hidden tests (including edge cases) and saves your attempt.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vertical Divider: Problem Description <-> Coding Workspace -->
+  <div class="resize-gutter resize-gutter-col"
+       pane-resizer="vertical"
+       resizer-var="--solve-problem-width"
+       resizer-key="solve.problemWidth"
+       resizer-default="42"
+       resizer-min-first="280"
+       resizer-min-second="380"
+       role="separator" aria-orientation="vertical" aria-label="Resize problem description panel"
+       tabindex="0" title="Drag to resize • Double-click to reset"></div>
+
+  <!-- RIGHT PANE: Code Editor & Console Runner -->
+  <div class="solve-pane solve-pane-workspace">
+    <!-- Editor Toolbar -->
+    <div class="editor-toolbar">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <select class="editor-select" ng-model="editor.language" ng-change="onLanguageChange()" aria-label="Language"
+                ng-options="l.id as l.label for l in languages" ng-disabled="isRunningCode || isSubmitting"></select>
+        <span class="editor-meta" ng-if="restoredDraft" title="Your unsaved code was restored from this browser">
+          <i class="fa-solid fa-floppy-disk"></i> Draft restored
+        </span>
+      </div>
+
+      <div class="editor-actions">
+        <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="resetCode()" title="Reset to the starter template">
+          <i class="fa-solid fa-rotate-left"></i> Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor + Console Split Area -->
+    <div class="workspace-split">
+
+    <!-- Monaco Code Editor Body -->
+    <div class="editor-body">
+      <div id="monaco-editor-instance" monaco-editor code="editor.code" language="editor.language" options="editorSettings"></div>
+    </div>
+
+    <!-- Horizontal Divider: Code Editor <-> Console -->
+    <div class="resize-gutter resize-gutter-row"
+         pane-resizer="horizontal"
+         resizer-var="--solve-editor-height"
+         resizer-key="solve.editorHeight"
+         resizer-default="58"
+         resizer-min-first="120"
+         resizer-min-second="96"
+         role="separator" aria-orientation="horizontal" aria-label="Resize code editor and console"
+         tabindex="0" title="Drag to resize • Double-click to reset"></div>
+
+    <!-- Console / Output Drawer -->
+    <div class="console-drawer">
+      <div class="console-tabs-bar">
+        <div class="console-tabs" role="tablist">
+          <button type="button" class="console-tab-btn" ng-class="{'active': activeConsoleTab === 'testcases'}" ng-click="switchConsoleTab('testcases')">
+            <i class="fa-solid fa-vial"></i> Test Cases
+          </button>
+          <button type="button" class="console-tab-btn" ng-class="{'active': activeConsoleTab === 'output'}" ng-click="switchConsoleTab('output')">
+            <i class="fa-solid fa-terminal"></i> Console
+            <span class="tab-dot" ng-class="runOutput.passed ? 'dot-ok' : 'dot-bad'" ng-if="runOutput"></span>
+          </button>
+          <button type="button" class="console-tab-btn" ng-class="{'active': activeConsoleTab === 'result'}" ng-click="switchConsoleTab('result')">
+            <i class="fa-solid fa-flag-checkered"></i> Submission Result
+            <span class="tab-dot" ng-class="submissionResult.status === 'Accepted' ? 'dot-ok' : 'dot-bad'" ng-if="submissionResult"></span>
+          </button>
+          <button type="button" class="console-tab-btn" ng-class="{'active': activeConsoleTab === 'history'}" ng-click="switchConsoleTab('history')">
+            <i class="fa-solid fa-clock-rotate-left"></i> Previous Attempts ({{ previousAttempts.length }})
+          </button>
+        </div>
+
+        <div class="console-actions">
+          <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="runCode()" ng-disabled="isRunningCode || isSubmitting">
+            <i class="fa-solid" ng-class="isRunningCode ? 'fa-spinner fa-spin' : 'fa-play'" style="color: var(--cyan);"></i>
+            <span>{{ isRunningCode ? 'Running...' : 'Run Code' }}</span>
+          </button>
+          <button type="button" class="btn-modern btn-primary btn-sm" ng-click="submitCode()" ng-disabled="isSubmitting || isRunningCode">
+            <i class="fa-solid" ng-class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'"></i>
+            <span>{{ isSubmitting ? 'Evaluating...' : 'Submit' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Console Tab Content -->
+      <div class="console-content">
+
+        <!-- Tab 1: Sample Testcases -->
+        <div ng-if="activeConsoleTab === 'testcases'">
+          <div class="testcase-pill-bar">
+            <button type="button" class="tc-pill" ng-class="{'active': activeTestCaseIndex === $index}" ng-repeat="tc in problem.sampleTests" ng-click="selectTestCase($index)">
+              Case {{ $index + 1 }}
+            </button>
+            <span class="tc-hidden-note"><i class="fa-solid fa-eye-slash"></i> + {{ problem.hiddenTestCount }} hidden on submit</span>
+          </div>
+          <div class="io-box">
+            <div><span class="io-label">Input:</span> <span style="color: #67e8f9;">{{ problem.sampleTests[activeTestCaseIndex].input }}</span></div>
+            <div><span class="io-label">Expected:</span> <span style="color: #a7f3d0;">{{ problem.sampleTests[activeTestCaseIndex].expected }}</span></div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Run output -->
+        <div ng-if="activeConsoleTab === 'output'">
+          <div class="console-empty" ng-if="!runOutput && !isRunningCode && !runError">
+            Click <strong>Run Code</strong> to execute your {{ languageLabel(editor.language) }} solution against the sample tests on Judge0.
+          </div>
+          <div class="console-loading" ng-if="isRunningCode">
+            <i class="fa-solid fa-gear fa-spin"></i> Compiling and running on the Judge0 sandbox...
+          </div>
+          <div class="service-error" ng-if="runError && !isRunningCode">
+            <i class="fa-solid fa-plug-circle-xmark"></i>
+            <div><strong>Could not run your code.</strong><div>{{ runError }}</div></div>
+          </div>
+
+          <div ng-if="runOutput && !isRunningCode">
+            <div class="verdict-line">
+              <span class="verdict-text" ng-class="runOutput.passed ? 'text-emerald' : 'text-rose'">
+                {{ runOutput.passed ? 'All sample tests passed' : runOutput.status }}
+              </span>
+              <span class="verdict-meta" ng-if="runOutput.status !== 'Compilation Error'">
+                {{ runOutput.testCasesPassed }}/{{ runOutput.totalTestCases }} passed • Runtime <strong>{{ runOutput.runtime }}</strong> • Memory <strong>{{ runOutput.memory }}</strong>
+              </span>
+            </div>
+            <pre class="compile-output" ng-if="runOutput.compileOutput">{{ runOutput.compileOutput }}</pre>
+            <div test-result-list="runOutput.testResults"></div>
+            <div style="margin-top: 0.75rem;" ng-if="runOutput.analysis && editorSettings.showDiagnostics !== false">
+              <div analysis-card="runOutput.analysis" on-practice="practiceTopic(topic)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Submission result -->
+        <div ng-if="activeConsoleTab === 'result'">
+          <div class="console-empty" ng-if="!submissionResult && !isSubmitting">
+            Click <strong>Submit</strong> to run all tests (including hidden ones). The result and mistake analysis will appear here.
+          </div>
+          <div class="console-loading" ng-if="isSubmitting">
+            <i class="fa-solid fa-gear fa-spin"></i> Running all tests and analysing the result...
+          </div>
+          <div ng-if="submissionResult && !isSubmitting">
+            <div class="verdict-line">
+              <span class="verdict-text" ng-class="submissionResult.status === 'Accepted' ? 'text-emerald' : 'text-rose'">{{ submissionResult.status }}</span>
+              <span class="verdict-meta">
+                <span class="lang-tag">{{ submissionResult.language | languageName }}</span>
+                {{ submissionResult.testCasesPassed }}/{{ submissionResult.totalTestCases }} tests passed • Runtime <strong>{{ submissionResult.runtime || 'N/A' }}</strong> • Memory <strong>{{ submissionResult.memory || 'N/A' }}</strong>
+                <span ng-if="submissionResult.timestamp"> • {{ submissionResult.timestamp | date:'medium' }}</span>
+              </span>
+            </div>
+            <pre class="compile-output" ng-if="submissionResult.compileOutput">{{ submissionResult.compileOutput }}</pre>
+            <div analysis-card="submissionResult.analysis" on-practice="practiceTopic(topic)" ng-if="submissionResult.analysis" style="margin-bottom: 0.75rem;"></div>
+            <div test-result-list="submissionResult.testResults"></div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Previous Attempts -->
+        <div ng-if="activeConsoleTab === 'history'">
+          <div class="console-loading" ng-if="isLoadingHistory && !previousAttempts.length">
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading previous attempts...
+          </div>
+          <div class="service-error" ng-if="historyError"><i class="fa-solid fa-triangle-exclamation"></i> {{ historyError }}</div>
+          <div class="console-empty" ng-if="!isLoadingHistory && !historyError && !previousAttempts.length">
+            No submissions for this problem yet.
+          </div>
+          <div class="attempt-list" ng-if="previousAttempts.length">
+            <div class="attempt-row" ng-repeat="att in previousAttempts">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <span class="badge {{ att.status | verdictBadge }}">{{ att.status }}</span>
+                  <span class="lang-tag">{{ att.language | languageName }}</span>
+                  <span style="font-size: 0.76rem; color: #94a3b8;" title="{{ att.timestamp | date:'medium' }}">{{ att.timestamp | timeAgo }}</span>
+                  <span style="font-size: 0.72rem; color: #64748b;">• {{ att.testCasesPassed }}/{{ att.totalTestCases }} passed</span>
+                  <span style="font-size: 0.72rem; color: #64748b;" ng-if="att.runtime && att.runtime !== 'N/A'">• {{ att.runtime }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #cbd5e1; margin-top: 0.25rem;" ng-if="att.mistakeCategory">
+                  {{ att.analysis.confidence === 'possible' ? 'Possible mistake' : 'Mistake' }}: <span style="color: #f43f5e; font-weight: 600;">{{ att.mistakeCategory }}</span>
+                  <span style="color: #64748b; font-size: 0.72rem;"> ({{ att.ruleMatched }})</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="viewAttempt(att)" title="Show the result details"><i class="fa-solid fa-eye"></i> Details</button>
+                <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="loadAttemptCode(att)" title="Load this code into the editor"><i class="fa-solid fa-code"></i> Load</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Submission Result Modal -->
+<div class="modal-overlay" ng-if="showResultModal" ng-click="closeResultModal()">
+  <div class="modal-card modal-wide" ng-click="$event.stopPropagation()" role="dialog" aria-label="Submission result">
+    <div class="modal-header">
+      <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid" ng-class="submissionResult.passed ? 'fa-circle-check text-emerald' : 'fa-bug text-rose'"></i>
+        <span>{{ submissionResult.passed ? 'Accepted!' : submissionResult.status }}</span>
+      </h3>
+      <button type="button" ng-click="closeResultModal()" style="color: #94a3b8; font-size: 1.1rem;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="result-summary" ng-class="submissionResult.passed ? 'ok' : 'bad'">
+        <div><span>Tests passed</span><strong>{{ submissionResult.testCasesPassed }} / {{ submissionResult.totalTestCases }}</strong></div>
+        <div><span>Runtime</span><strong>{{ submissionResult.runtime }}</strong></div>
+        <div><span>Memory</span><strong>{{ submissionResult.memory }}</strong></div>
+      </div>
+
+      <p ng-if="submissionResult.passed" style="font-size: 0.88rem; color: #cbd5e1;">
+        All sample and hidden tests passed. Your submission has been saved and your analytics are updated.
+      </p>
+      <pre class="compile-output" ng-if="submissionResult.compileOutput">{{ submissionResult.compileOutput }}</pre>
+      <div analysis-card="submissionResult.analysis" on-practice="practiceTopic(topic)" ng-if="submissionResult.analysis"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-modern btn-secondary" ng-click="closeResultModal()">Back to Editor</button>
+      <a href="#!/mistakes" class="btn-modern btn-primary" ng-if="!submissionResult.passed && submissionResult.mistakeCategory" ng-click="closeResultModal()">
+        View Mistake Patterns →
+      </a>
+      <a href="#!/problems?recommended=true" class="btn-modern btn-primary" ng-if="submissionResult.passed" ng-click="closeResultModal()">
+        Next Recommended Problem →
+      </a>
+    </div>
+  </div>
+</div>

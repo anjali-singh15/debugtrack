@@ -1,0 +1,109 @@
+<!-- Problems Directory View -->
+<div class="view-header">
+  <div class="view-title-wrap">
+    <h1 class="view-title">Practice Problems</h1>
+    <p class="view-subtitle" ng-if="counts">
+      {{ counts.total }} problems · <span class="text-emerald">{{ counts.solved }} solved</span> · <span class="text-amber">{{ counts.attempted }} attempted</span>
+    </p>
+  </div>
+  <div>
+    <button type="button" class="btn-modern btn-secondary" ng-click="resetFilters()">
+      <i class="fa-solid fa-arrows-rotate"></i> Reset Filters
+    </button>
+  </div>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="filters-toolbar">
+  <div class="search-input-group">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" class="input-modern" placeholder="Search by title, topic, focus area or #number..." ng-model="filters.search" ng-model-options="{ debounce: 150 }" aria-label="Search problems">
+  </div>
+
+  <div class="filter-pills-row">
+    <span class="filter-group-label">Difficulty:</span>
+    <button type="button" class="filter-chip" ng-class="{'active': filters.difficulty === diff}" ng-repeat="diff in difficulties" ng-click="setFilter('difficulty', diff)">{{ diff }}</button>
+  </div>
+
+  <div class="filter-pills-row">
+    <span class="filter-group-label">Topic:</span>
+    <button type="button" class="filter-chip" ng-class="{'active': filters.topic === top}" ng-repeat="top in topics" ng-click="setFilter('topic', top)">{{ top }}</button>
+  </div>
+
+  <div class="filter-pills-row">
+    <span class="filter-group-label">Status:</span>
+    <button type="button" class="filter-chip" ng-class="{'active': filters.status === stat}" ng-repeat="stat in statuses" ng-click="setFilter('status', stat)">{{ stat }}</button>
+    <span class="filter-divider"></span>
+    <button type="button" class="filter-chip" ng-class="{'active': filters.recommendedOnly}" ng-click="filters.recommendedOnly = !filters.recommendedOnly">
+      <i class="fa-solid fa-star" style="color: #fbbf24;"></i> Recommended for me
+    </button>
+  </div>
+</div>
+
+<div class="state-panel" ng-if="state.loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading problems...</div>
+<div class="state-panel state-error" ng-if="state.error">
+  <i class="fa-solid fa-triangle-exclamation"></i> {{ state.error }}
+  <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="load()">Retry</button>
+</div>
+
+<!-- Problems Table -->
+<div class="card-panel" style="padding: 0; overflow: hidden;" ng-if="!state.loading && !state.error">
+  <div style="overflow-x: auto;">
+    <table class="problems-table">
+      <thead>
+        <tr>
+          <th style="width: 56px;">#</th>
+          <th>Problem</th>
+          <th>Topic</th>
+          <th>Difficulty</th>
+          <th title="Accepted submissions ÷ all submissions on DebugTrack">Acceptance</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="prob in filtered = (problems | filter:problemFilter)">
+          <td style="font-family: var(--font-mono); color: #64748b;">{{ prob.number }}</td>
+          <td>
+            <div class="table-problem-title">
+              <a href="#!/solve/{{ prob.id }}">{{ prob.title }}</a>
+              <span class="recommended-badge" ng-if="prob.recommended" title="{{ prob.recommendedReason }}">
+                <i class="fa-solid fa-star"></i> Recommended
+              </span>
+            </div>
+            <div class="table-problem-sub">
+              <i class="fa-solid fa-shield-virus" style="color: #f59e0b;"></i> {{ prob.mistakeProneArea }}
+            </div>
+            <div class="table-problem-reason" ng-if="prob.recommended">{{ prob.recommendedReason }}</div>
+          </td>
+          <td><span class="badge badge-cyan">{{ prob.topic }}</span></td>
+          <td><span class="badge {{ prob.difficulty | difficultyBadge }}">{{ prob.difficulty }}</span></td>
+          <td style="font-family: var(--font-mono); color: #cbd5e1;">
+            <span ng-if="prob.acceptanceRate != null" title="{{ prob.totalSubmissions }} submissions">{{ prob.acceptanceRate }}%</span>
+            <span ng-if="prob.acceptanceRate == null" style="color: #475569;" title="No submissions yet">—</span>
+          </td>
+          <td>
+            <span class="status-pill {{ prob.status | statusBadge }}">
+              <i class="fa-solid" ng-class="prob.status === 'Solved' ? 'fa-check' : 'fa-circle'" style="font-size: 7px;"></i> {{ prob.status }}
+            </span>
+            <div class="table-problem-sub" ng-if="prob.attempts">{{ prob.attempts }} attempt{{ prob.attempts === 1 ? '' : 's' }}</div>
+          </td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-modern btn-sm" ng-class="prob.status === 'Solved' ? 'btn-secondary' : 'btn-primary'" ng-click="goToSolve(prob.id)">
+              {{ prob.status === 'Solved' ? 'Review' : prob.status === 'Attempted' ? 'Retry →' : 'Solve →' }}
+            </button>
+          </td>
+        </tr>
+        <tr ng-if="filtered.length === 0">
+          <td colspan="7" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
+            <i class="fa-solid fa-filter-circle-xmark" style="font-size: 2rem; color: #475569; margin-bottom: 0.75rem; display: block;"></i>
+            No problems match your current filters.
+            <div style="margin-top: 0.75rem;">
+              <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="resetFilters()">Reset All Filters</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,25 @@
+<!-- Per-test results of a run / submission -->
+<div class="test-results">
+  <div class="test-result-row" ng-repeat="t in tests" ng-class="{'is-pass': t.passed, 'is-fail': !t.passed}">
+    <div class="test-result-main">
+      <div class="test-result-head">
+        <strong>Test {{ t.id }}</strong>
+        <span class="hidden-tag" ng-if="t.hidden"><i class="fa-solid fa-eye-slash"></i> hidden</span>
+        <span class="edge-tag" ng-if="t.edge"><i class="fa-solid fa-arrows-left-right-to-line"></i> {{ t.edge }}</span>
+      </div>
+      <div ng-if="t.input !== undefined">
+        <div class="test-io"><span class="io-label">Input:</span> <span class="mono">{{ t.input }}</span></div>
+        <div class="test-io">
+          <span class="io-label">Expected:</span> <span class="mono text-emerald">{{ t.expected }}</span>
+          <span class="io-label" style="margin-left: 0.75rem;">Output:</span>
+          <span class="mono" ng-class="t.passed ? 'text-emerald' : 'text-rose'">{{ t.actual === undefined || t.actual === null ? '(no output)' : t.actual }}</span>
+          <span class="io-label" ng-if="t.errorLine"> (line {{ t.errorLine }})</span>
+        </div>
+        <pre class="stdout-box" ng-if="t.stdout"><span class="io-label">Your stdout:</span>
+{{ t.stdout }}</pre>
+      </div>
+      <div class="test-io" ng-if="t.input === undefined && !t.passed">Hidden test details are not shown.</div>
+    </div>
+    <span class="badge" ng-class="t.passed ? 'badge-success' : (t.status === 'Not Run' ? 'badge-info' : 'badge-danger')">{{ t.status }}</span>
+  </div>
+</div>

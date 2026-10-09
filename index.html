@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DebugTrack - Mistake-Driven Coding Practice</title>
+  <meta name="description" content="A coding practice platform that tracks recurring programming mistake patterns, performs explainable rule-based diagnostics, and recommends targeted problems.">
+
+  <!-- Favicon Icon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons 6.5.1 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- App Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css?v=20261007_2">
+</head>
+
+<body ng-app="debugTrackApp" ng-controller="MainController" ng-cloak>
+
+  <!-- App Main Layout Container -->
+  <div class="app-container" ng-class="{'auth-layout': isAuthRoute}">
+
+    <!-- ====================================================================
+         PERSISTENT SIDEBAR NAVIGATION (hidden on login/register)
+         ==================================================================== -->
+    <aside class="sidebar" ng-if="!isAuthRoute" ng-class="{'mobile-open': mobileSidebarOpen}">
+
+      <!-- Brand Logo -->
+      <div class="sidebar-brand">
+        <a href="#!/" class="brand-logo">
+          <span class="brand-bolt">⚡</span>
+          <span>DebugTrack</span>
+        </a>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <div class="nav-section-title">Core Navigation</div>
+
+        <a href="#!/" class="nav-link" ng-class="{'active': isActive('/')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="#!/problems" class="nav-link" ng-class="{'active': isActive('/problems') || isActive('/solve')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-code"></i>
+          <span>Problems</span>
+        </a>
+
+        <a href="#!/submissions" class="nav-link" ng-class="{'active': isActive('/submissions')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-list-check"></i>
+          <span>Submissions</span>
+        </a>
+
+        <a href="#!/mistakes" class="nav-link" ng-class="{'active': isActive('/mistakes')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-brain"></i>
+          <span>Mistake Patterns</span>
+          <span class="nav-link-badge" ng-if="shell.totalMistakes > 0" title="Total flagged submissions">{{ shell.totalMistakes }}</span>
+        </a>
+
+        <a href="#!/analytics" class="nav-link" ng-class="{'active': isActive('/analytics')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Analytics</span>
+        </a>
+
+        <a href="#!/profile" class="nav-link" ng-class="{'active': isActive('/profile')}" ng-click="closeMobileSidebar()">
+          <i class="fa-solid fa-user-graduate"></i>
+          <span>Profile</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Bottom Profile & Controls -->
+      <div class="sidebar-bottom">
+
+        <div class="sidebar-actions">
+          <button type="button" class="nav-link" ng-click="toggleSettingsModal(); closeMobileSidebar()">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Settings</span>
+          </button>
+          <button type="button" class="nav-link" ng-click="logout()">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+
+        <!-- Student Profile Card in Sidebar -->
+        <a href="#!/profile" class="sidebar-user-card" ng-click="closeMobileSidebar()">
+          <div class="user-avatar-initials">{{ currentUser.avatarInitials }}</div>
+          <div class="user-meta">
+            <div class="user-name">{{ currentUser.name }}</div>
+            <div class="user-role">{{ currentUser.role }}</div>
+          </div>
+          <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: var(--text-dim);"></i>
+        </a>
+
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" ng-if="!isAuthRoute && mobileSidebarOpen" ng-click="closeMobileSidebar()"></div>
+
+    <!-- ====================================================================
+         MAIN WRAPPER & TOP NAVIGATION BAR
+         ==================================================================== -->
+    <div class="main-wrapper">
+
+      <!-- Top Navbar -->
+      <header class="top-navbar" ng-if="!isAuthRoute">
+        <div class="navbar-left">
+          <button type="button" class="mobile-menu-toggle" ng-click="toggleMobileSidebar()" aria-label="Open navigation">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="page-breadcrumb">
+            <span style="color: var(--text-dim);">DebugTrack</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.65rem;"></i>
+            <span class="current-page" ng-if="isActive('/')">Dashboard</span>
+            <span class="current-page" ng-if="isActive('/problems')">Problems Catalog</span>
+            <span class="current-page" ng-if="isActive('/solve')">Problem Solver</span>
+            <span class="current-page" ng-if="isActive('/submissions')">Submission History</span>
+            <span class="current-page" ng-if="isActive('/mistakes')">Mistake Analytics</span>
+            <span class="current-page" ng-if="isActive('/analytics')">Performance Reports</span>
+            <span class="current-page" ng-if="isActive('/profile')">Student Profile</span>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <!-- Quick Search Trigger -->
+          <button type="button" class="search-trigger-btn" ng-click="toggleSearchModal()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Quick search...</span>
+            <span class="search-kbd">⌘K</span>
+          </button>
+
+          <!-- Current Streak Pill -->
+          <div class="streak-pill" title="Consecutive days with at least one submission">
+            <i class="fa-solid fa-fire"></i>
+            <span>{{ shell.streak }} Day{{ shell.streak === 1 ? '' : 's' }}</span>
+          </div>
+
+          <!-- Notification Bell Dropdown -->
+          <div style="position: relative;">
+            <button type="button" class="nav-icon-btn" ng-click="toggleNotifDropdown()" title="Notifications" aria-label="Notifications">
+              <i class="fa-regular fa-bell"></i>
+              <span class="icon-badge" ng-if="unreadNotifCount() > 0">{{ unreadNotifCount() }}</span>
+            </button>
+
+            <!-- Notifications Popover Drawer -->
+            <div class="modal-card notif-dropdown" ng-if="notifDropdownOpen">
+              <div class="modal-header" style="padding: 0.85rem 1rem;">
+                <span style="font-weight: 700; font-size: 0.88rem; color: #fff;">Notifications</span>
+                <button type="button" style="font-size: 0.72rem; color: var(--cyan);" ng-click="markAllNotifsRead()" ng-if="shell.notifications.length">Mark all as read</button>
+              </div>
+              <div class="modal-body" style="padding: 0.75rem; max-height: 320px; gap: 0.4rem;">
+                <div class="empty-inline" ng-if="!shell.notifications.length">No notifications yet. Submit a solution to get personalised insights.</div>
+                <button type="button" class="notif-item" ng-class="{'unread': !n.read}" ng-repeat="n in shell.notifications" ng-click="openNotification(n)">
+                  <i class="{{ n.icon }}" ng-style="{'color': n.iconColor}"></i>
+                  <div style="flex: 1; text-align: left;">
+                    <div style="font-weight: 600; font-size: 0.8rem; color: #fff;">{{ n.title }}</div>
+                    <div style="font-size: 0.74rem; color: #94a3b8;">{{ n.message }}</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Shortcut -->
+          <a href="#!/profile" class="nav-icon-btn" title="View Profile" aria-label="View profile">
+            <i class="fa-regular fa-user"></i>
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Dynamic View Container -->
+      <main class="main-content-view" ng-view>
+        <!-- AngularJS route templates render here -->
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- ====================================================================
+       TOAST NOTIFICATION CONTAINER
+       ==================================================================== -->
+  <div class="toast-container" role="status" aria-live="polite">
+    <div class="toast-item" ng-class="'toast-' + toast.type" ng-repeat="toast in toasts track by toast.id">
+      <i class="{{ toast.icon }}" style="font-size: 1.1rem;"></i>
+      <span style="font-size: 0.85rem; font-weight: 500; color: #f1f5f9;">{{ toast.message }}</span>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       GLOBAL QUICK SEARCH MODAL (CMD+K)
+       ==================================================================== -->
+  <div class="modal-overlay" ng-if="searchModalOpen" ng-click="toggleSearchModal()">
+    <div class="modal-card" ng-click="$event.stopPropagation()" role="dialog" aria-label="Quick search">
+      <div style="padding: 1.25rem; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 0.75rem;">
+        <i class="fa-solid fa-magnifying-glass" style="color: var(--cyan);"></i>
+        <input
+          type="text"
+          class="input-modern"
+          style="padding-left: 0.75rem; border: none; background: transparent; font-size: 1rem;"
+          placeholder="Type a problem name, topic or #number..."
+          ng-model="search.query"
+          autofocus>
+        <button type="button" class="search-kbd" ng-click="toggleSearchModal()">ESC</button>
+      </div>
+
+      <div style="padding: 0.75rem; max-height: 320px; overflow-y: auto;">
+        <div class="empty-inline" ng-if="!searchProblems.length"><i class="fa-solid fa-spinner fa-spin"></i> Loading problems...</div>
+        <button type="button" class="search-result" ng-repeat="p in searchProblems | filter:searchFilter | limitTo:12" ng-click="quickJumpProblem(p.id)">
+          <div style="text-align: left;">
+            <div style="font-weight: 600; color: #fff; font-size: 0.88rem;">#{{ p.number }} {{ p.title }}</div>
+            <div style="font-size: 0.74rem; color: #94a3b8;">{{ p.topic }} • {{ p.status }}</div>
+          </div>
+          <span class="badge {{ p.difficulty | difficultyBadge }}">{{ p.difficulty }}</span>
+        </button>
+        <div class="empty-inline" ng-if="searchProblems.length && !(searchProblems | filter:searchFilter).length">No problems match "{{ search.query }}".</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       GLOBAL SETTINGS MODAL
+       ==================================================================== -->
+  <div class="modal-overlay" ng-if="settingsModalOpen">
+    <div class="modal-card" role="dialog" aria-label="Settings">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-sliders" style="color: var(--cyan);"></i> Settings</h3>
+        <button type="button" ng-click="toggleSettingsModal()" style="color: #94a3b8; font-size: 1.1rem;" aria-label="Close settings"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="settings-tabs">
+        <button type="button" class="console-tab-btn" ng-class="{'active': settingsTab === 'editor'}" ng-click="settingsTab = 'editor'"><i class="fa-solid fa-code"></i> Editor</button>
+        <button type="button" class="console-tab-btn" ng-class="{'active': settingsTab === 'account'}" ng-click="settingsTab = 'account'"><i class="fa-solid fa-user-shield"></i> Account</button>
+      </div>
+
+      <!-- Editor preferences -->
+      <div class="modal-body" ng-if="settingsTab === 'editor'">
+        <div>
+          <label class="form-label" for="set-lang">Default language</label>
+          <select id="set-lang" class="input-modern input-plain" ng-model="settingsForm.defaultLanguage"
+                  ng-options="l.id as l.label for l in [{id:'java',label:'Java'},{id:'python',label:'Python 3'},{id:'cpp',label:'C++'}]"></select>
+          <p class="form-hint" style="margin-top: 0.35rem;">Used when you open a problem for the first time. You can switch language at any time in the editor.</p>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label class="form-label" for="set-font">Editor font size</label>
+            <select id="set-font" class="input-modern input-plain" ng-model="settingsForm.editorFontSize" ng-options="s as (s + 'px') for s in [12, 13, 14, 15, 16, 18]"></select>
+          </div>
+          <div>
+            <label class="form-label" for="set-tab">Tab size</label>
+            <select id="set-tab" class="input-modern input-plain" ng-model="settingsForm.tabSize" ng-options="s as (s + ' spaces') for s in [2, 4]"></select>
+          </div>
+        </div>
+
+        <label class="toggle-row">
+          <div>
+            <div class="toggle-title">Word wrap</div>
+            <div class="toggle-desc">Wrap long lines in the code editor</div>
+          </div>
+          <input type="checkbox" ng-model="settingsForm.wordWrap">
+        </label>
+        <label class="toggle-row">
+          <div>
+            <div class="toggle-title">Minimap</div>
+            <div class="toggle-desc">Show the code overview strip on the right of the editor</div>
+          </div>
+          <input type="checkbox" ng-model="settingsForm.minimap">
+        </label>
+        <label class="toggle-row">
+          <div>
+            <div class="toggle-title">Mistake diagnostics popup</div>
+            <div class="toggle-desc">Open the result dialog with the rule-engine analysis after each submission</div>
+          </div>
+          <input type="checkbox" ng-model="settingsForm.showDiagnostics">
+        </label>
+      </div>
+
+      <!-- Account -->
+      <div class="modal-body" ng-if="settingsTab === 'account'">
+        <div class="account-box">
+          <div><span>Name</span><strong>{{ currentUser.name }}</strong></div>
+          <div><span>Email</span><strong>{{ currentUser.email }}</strong></div>
+          <div><span>Role</span><strong>{{ currentUser.role }}</strong></div>
+          <div><span>Member since</span><strong>{{ currentUser.createdAt | date:'mediumDate' }}</strong></div>
+        </div>
+        <p class="form-hint">Your name and university can be edited from the Profile page. Email cannot be changed.</p>
+
+        <form name="pwForm" ng-submit="changePassword()" novalidate class="form-stack">
+          <div class="section-label" style="margin-bottom: 0;">Change password</div>
+          <div>
+            <label class="form-label" for="pw-current">Current password</label>
+            <input id="pw-current" type="password" class="input-modern input-plain" ng-model="passwordForm.currentPassword" autocomplete="current-password">
+            <div class="field-error" ng-if="passwordErrors.currentPassword">{{ passwordErrors.currentPassword }}</div>
+          </div>
+          <div class="form-row-2">
+            <div>
+              <label class="form-label" for="pw-new">New password</label>
+              <input id="pw-new" type="password" class="input-modern input-plain" ng-model="passwordForm.newPassword" autocomplete="new-password">
+              <div class="field-error" ng-if="passwordErrors.newPassword">{{ passwordErrors.newPassword }}</div>
+            </div>
+            <div>
+              <label class="form-label" for="pw-confirm">Confirm new password</label>
+              <input id="pw-confirm" type="password" class="input-modern input-plain" ng-model="passwordForm.confirmPassword" autocomplete="new-password">
+              <div class="field-error" ng-if="passwordErrors.confirmPassword">{{ passwordErrors.confirmPassword }}</div>
+            </div>
+          </div>
+          <div>
+            <button type="submit" class="btn-modern btn-secondary btn-sm" ng-disabled="changingPassword">
+              <i class="fa-solid" ng-class="changingPassword ? 'fa-spinner fa-spin' : 'fa-key'"></i> Update password
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-modern btn-secondary" ng-click="toggleSettingsModal()">Close</button>
+        <button type="button" class="btn-modern btn-primary" ng-if="settingsTab === 'editor'" ng-click="saveSettings()" ng-disabled="savingSettings">
+          <i class="fa-solid fa-spinner fa-spin" ng-if="savingSettings"></i> Save Preferences
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       JAVASCRIPT SCRIPTS & LIBRARIES
+       ==================================================================== -->
+  <!-- AngularJS 1.8.2 (local copies in lib/ are used if the CDN is unreachable) -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+  <script>window.angular || document.write('<script src="lib/angular.min.js"><\/script>');</script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular-route.min.js"></script>
+  <script>(window.angular && angular.module && (function(){ try { angular.module('ngRoute'); return true; } catch (e) { return false; } })()) || document.write('<script src="lib/angular-route.min.js"><\/script>');</script>
+  <!-- Chart.js 4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Monaco Editor AMD Loader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+  <script>
+    if (window.require) {
+      window.require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    }
+  </script>
+
+  <script src="js/app.js?v=20261007_2"></script>
+  <script src="js/controllers.js?v=20261007_2"></script>
+
+</body>
+</html>

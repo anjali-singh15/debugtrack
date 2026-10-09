@@ -1,0 +1,39 @@
+<!-- Rule-engine analysis of a failed run/submission -->
+<div class="analysis-card" ng-class="{'analysis-possible': a.confidence === 'possible', 'analysis-neutral': !a.category}">
+  <div class="analysis-head">
+    <div class="analysis-badges">
+      <span class="badge badge-danger" ng-if="a.category && a.category !== 'Unclassified'">
+        <i class="fa-solid fa-bug"></i> {{ a.category }}
+      </span>
+      <span class="badge badge-info" ng-if="a.category === 'Unclassified'"><i class="fa-solid fa-circle-question"></i> Unclassified</span>
+      <span class="badge badge-warning" ng-if="!a.category"><i class="fa-solid fa-circle-info"></i> Not counted as a mistake pattern</span>
+      <span class="confidence-chip" ng-if="a.category && a.category !== 'Unclassified'" ng-class="a.confidence === 'possible' ? 'conf-possible' : 'conf-high'"
+            title="{{ a.confidence === 'possible' ? 'Circumstantial evidence only' : 'Backed by direct evidence (exception or edge-case-only failures)' }}">
+        {{ a.confidence === 'possible' ? 'Possible mistake' : 'Detected' }}
+      </span>
+    </div>
+    <span class="rule-id" title="Rule that produced this result">{{ a.ruleId }}</span>
+  </div>
+
+  <div class="analysis-title" ng-if="a.title">{{ a.title }}</div>
+  <p class="analysis-text" ng-bind-html="a.explanation | richText"></p>
+
+  <div ng-if="a.evidence && a.evidence.length">
+    <div class="analysis-label"><i class="fa-solid fa-magnifying-glass"></i> Evidence</div>
+    <ul class="evidence-list">
+      <li ng-repeat="e in a.evidence track by $index" ng-bind-html="e | richText"></li>
+    </ul>
+  </div>
+
+  <div class="analysis-suggestion" ng-if="a.suggestion">
+    <div class="analysis-label"><i class="fa-solid fa-lightbulb"></i> Suggested improvement</div>
+    <p ng-bind-html="a.suggestion | richText"></p>
+  </div>
+
+  <div class="analysis-footer" ng-if="a.practiceTopic">
+    <span>Related practice topic: <strong>{{ a.practiceTopic }}</strong></span>
+    <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="onPractice({ topic: a.practiceTopic })" ng-if="hasPractice">
+      Practice {{ a.practiceTopic }} →
+    </button>
+  </div>
+</div>

@@ -1,0 +1,67 @@
+<!-- Registration View -->
+<div class="auth-page">
+  <div class="auth-intro">
+    <div class="brand-logo auth-brand"><span class="brand-bolt">⚡</span><span>DebugTrack</span></div>
+    <h1 class="auth-headline">Practice smarter, not just more.</h1>
+    <p class="auth-tagline">Every submission you make is analysed for recurring mistakes like off-by-one indexing, missing null checks and unhandled edge cases.</p>
+    <ul class="auth-points">
+      <li><i class="fa-solid fa-layer-group"></i> Curated problems in Java, Python &amp; C++ across 11 DSA topics</li>
+      <li><i class="fa-solid fa-chart-line"></i> Personal analytics built from your own attempts</li>
+      <li><i class="fa-solid fa-lock"></i> Passwords are hashed with bcrypt</li>
+    </ul>
+  </div>
+
+  <div class="auth-card">
+    <h2 class="auth-title">Create your account</h2>
+    <p class="auth-subtitle">It takes less than a minute.</p>
+
+    <div class="form-alert" ng-if="formError" role="alert">
+      <i class="fa-solid fa-circle-exclamation"></i> {{ formError }}
+      <a href="#!/login" ng-if="errors.email && errors.email.indexOf('already') !== -1">Log in instead</a>
+    </div>
+
+    <form name="registerForm" ng-submit="submit()" novalidate class="form-stack">
+      <div>
+        <label class="form-label" for="reg-name">Full name</label>
+        <input id="reg-name" type="text" class="input-modern input-plain" ng-class="{'input-invalid': errors.name}"
+               ng-model="form.name" autocomplete="name" placeholder="e.g. Anjali Singh" autofocus>
+        <div class="field-error" ng-if="errors.name">{{ errors.name }}</div>
+      </div>
+
+      <div>
+        <label class="form-label" for="reg-email">Email</label>
+        <input id="reg-email" type="email" class="input-modern input-plain" ng-class="{'input-invalid': errors.email}"
+               ng-model="form.email" autocomplete="email" placeholder="you@college.edu">
+        <div class="field-error" ng-if="errors.email">{{ errors.email }}</div>
+      </div>
+
+      <div class="form-row-2">
+        <div>
+          <label class="form-label" for="reg-password">Password</label>
+          <div class="password-field">
+            <input id="reg-password" type="{{ showPassword ? 'text' : 'password' }}" class="input-modern input-plain" ng-class="{'input-invalid': errors.password}"
+                   ng-model="form.password" autocomplete="new-password" placeholder="8+ characters">
+            <button type="button" class="password-toggle" ng-click="showPassword = !showPassword" aria-label="Show or hide password">
+              <i class="fa-regular" ng-class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+          </div>
+          <div class="field-error" ng-if="errors.password">{{ errors.password }}</div>
+        </div>
+        <div>
+          <label class="form-label" for="reg-confirm">Confirm password</label>
+          <input id="reg-confirm" type="{{ showPassword ? 'text' : 'password' }}" class="input-modern input-plain" ng-class="{'input-invalid': errors.confirmPassword}"
+                 ng-model="form.confirmPassword" autocomplete="new-password" placeholder="Repeat password">
+          <div class="field-error" ng-if="errors.confirmPassword">{{ errors.confirmPassword }}</div>
+        </div>
+      </div>
+      <p class="form-hint">Use at least 8 characters, including a letter and a number.</p>
+
+      <button type="submit" class="btn-modern btn-primary btn-block" ng-disabled="submitting">
+        <i class="fa-solid" ng-class="submitting ? 'fa-spinner fa-spin' : 'fa-user-plus'"></i>
+        {{ submitting ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="#!/login">Log in</a></p>
+  </div>
+</div>

@@ -1,0 +1,28 @@
+{
+  "name": "debugtrack-backend",
+  "version": "2.0.0",
+  "description": "DebugTrack REST API: JWT auth, Judge0 code execution, rule-based mistake analytics (Node.js + Express + SQLite)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "seed:reset": "node seed.js --reset",
+    "seed:demo": "node scripts/seedDemo.js",
+    "setup": "node seed.js --reset && node scripts/seedDemo.js",
+    "verify:problems": "node scripts/verifyProblems.js --starter",
+    "test": "node --test --test-concurrency=1 tests/mistakeEngine.test.js tests/api.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "sqlite3": "^6.0.1"
+  }
+}

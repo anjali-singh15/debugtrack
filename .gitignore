@@ -1,0 +1,10 @@
+node_modules/
+backend/debugtrack.db
+backend/debugtrack.db-shm
+backend/debugtrack.db-wal
+backend/.jwt-secret
+.DS_Store
+.Rhistory
+
+# Review-1 mock data, no longer used
+js/data.js.bak

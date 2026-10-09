@@ -1,0 +1,251 @@
+<!-- Dashboard View -->
+<div class="view-header">
+  <div class="view-title-wrap">
+    <h1 class="view-title">{{ timeGreeting }}, {{ currentUser.firstName }} 👋</h1>
+    <p class="view-subtitle">Turn your mistakes into progress.</p>
+  </div>
+  <div class="view-actions">
+    <button type="button" class="btn-modern btn-primary" ng-click="practiceWeakArea()" ng-disabled="state.loading">
+      <i class="fa-solid fa-bolt"></i> {{ d.overview.totalSubmissions ? 'Practice Weak Area' : 'Start Practising' }}
+    </button>
+  </div>
+</div>
+
+<!-- Loading / Error states -->
+<div class="state-panel" ng-if="state.loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading your dashboard...</div>
+<div class="state-panel state-error" ng-if="state.error">
+  <i class="fa-solid fa-triangle-exclamation"></i> {{ state.error }}
+  <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="load()">Retry</button>
+</div>
+
+<div ng-if="!state.loading && !state.error">
+
+  <!-- 4 Top Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Problems Attempted</span>
+        <div class="stat-icon-wrap stat-icon-blue"><i class="fa-solid fa-pen-to-square"></i></div>
+      </div>
+      <div class="stat-value">{{ d.overview.problemsAttempted }}</div>
+      <div class="stat-footer neutral"><span>of {{ d.overview.totalProblems }} problems in the catalogue</span></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Problems Solved</span>
+        <div class="stat-icon-wrap stat-icon-cyan"><i class="fa-solid fa-code"></i></div>
+      </div>
+      <div class="stat-value">{{ d.overview.problemsSolved }}</div>
+      <div class="stat-footer neutral">
+        <i class="fa-solid fa-rotate"></i>
+        <span>{{ d.overview.fixedAfterMistake }} solved after fixing a flagged mistake</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Total Submissions</span>
+        <div class="stat-icon-wrap stat-icon-amber"><i class="fa-solid fa-server"></i></div>
+      </div>
+      <div class="stat-value">{{ d.overview.totalSubmissions }}</div>
+      <div class="stat-footer neutral">
+        <span>{{ d.overview.acceptedSubmissions }} accepted · {{ d.overview.failedSubmissions }} not accepted</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Accuracy</span>
+        <div class="stat-icon-wrap stat-icon-emerald"><i class="fa-solid fa-bullseye"></i></div>
+      </div>
+      <div class="stat-value">{{ d.overview.accuracy }}%</div>
+      <div class="stat-footer" ng-class="{'neutral': d.improvement.accuracyChange == null, 'negative': d.improvement.accuracyChange < 0}">
+        <span ng-if="d.improvement.accuracyChange != null">
+          <i class="fa-solid" ng-class="d.improvement.accuracyChange >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'"></i>
+          {{ d.improvement.accuracyChange >= 0 ? '+' : '' }}{{ d.improvement.accuracyChange }} pts vs. previous 14 days
+        </span>
+        <span ng-if="d.improvement.accuracyChange == null">Accepted ÷ total submissions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New user welcome -->
+  <div class="empty-hero" ng-if="!d.overview.totalSubmissions">
+    <i class="fa-solid fa-seedling"></i>
+    <div>
+      <h3>Your dashboard fills in as you practise</h3>
+      <p>Pick a recommended problem below, write your Java solution, and submit it. DebugTrack will analyse any failures and start tracking your mistake patterns.</p>
+    </div>
+  </div>
+
+  <!-- Weakest Area Highlight Section (Hero Card) -->
+  <div class="weakest-area-card" ng-if="d.weakArea">
+    <div class="weakest-grid">
+      <div class="weakest-main">
+        <div class="weakest-tag-bar">
+          <span class="badge badge-danger" ng-if="d.weakArea.mistakeCategory"><i class="fa-solid fa-triangle-exclamation"></i> Most frequent mistake</span>
+          <span class="badge badge-cyan"><i class="fa-solid fa-layer-group"></i> Rule engine summary</span>
+        </div>
+        <h2 class="weakest-title">{{ d.weakArea.mistakeCategory || 'No recurring mistake yet' }}</h2>
+        <p class="weakest-desc" ng-if="d.weakArea.mistakeCategory">
+          {{ d.weakArea.mistakeCount }} of your {{ d.mistakeSummary.totalMistakes }} flagged submissions were classified as <strong>{{ d.weakArea.mistakeCategory }}</strong>.
+          {{ d.weakArea.tip }}
+        </p>
+
+        <div class="weakest-stats-row">
+          <div class="weakest-metric-pill" ng-if="d.weakArea.topic">
+            <i class="fa-solid fa-layer-group" style="color: #f59e0b;"></i>
+            <span>Current weak area: <strong>{{ d.weakArea.topic }}</strong><span ng-if="d.weakArea.topicAccuracy != null"> ({{ d.weakArea.topicAccuracy }}% accuracy)</span></span>
+          </div>
+          <div class="weakest-metric-pill">
+            <i class="fa-solid fa-circle-check" style="color: #10b981;"></i>
+            <span><strong>{{ d.weakArea.fixedAfterMistake }}</strong> problem{{ d.weakArea.fixedAfterMistake === 1 ? '' : 's' }} solved after a flagged mistake</span>
+          </div>
+        </div>
+
+        <div>
+          <button type="button" class="btn-modern btn-primary" ng-click="practiceWeakArea()" ng-if="d.recommendations.length">
+            Practice: {{ d.recommendations[0].title }} →
+          </button>
+        </div>
+      </div>
+
+      <div class="weakest-progress-wrap">
+        <div class="progress-header">
+          <span style="color: #cbd5e1;">Share of flagged submissions</span>
+          <span style="color: #f43f5e;">{{ d.weakArea.mistakeShare }}%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill fill-rose" ng-style="{'width': d.weakArea.mistakeShare + '%'}"></div>
+        </div>
+        <p style="font-size: 0.76rem; color: #94a3b8; margin-top: 0.25rem;">
+          Mistake rate, last 14 days:
+          <strong style="color: #fff;">{{ d.improvement.recentMistakeRate != null ? d.improvement.recentMistakeRate + '%' : '—' }}</strong>
+          <span ng-if="d.improvement.mistakeRateChange != null" ng-class="d.improvement.mistakeRateChange <= 0 ? 'text-emerald' : 'text-rose'">
+            ({{ d.improvement.mistakeRateChange > 0 ? '+' : '' }}{{ d.improvement.mistakeRateChange }} pts)
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two Column Split: Mistake Patterns & Progress Chart -->
+  <div class="dashboard-split-grid">
+    <div class="card-panel">
+      <div class="card-title-bar">
+        <div>
+          <h3 class="card-heading"><i class="fa-solid fa-brain"></i> Your Mistake Patterns</h3>
+          <p class="card-subtext" ng-if="d.mistakeSummary.mostFrequent">{{ d.mistakeSummary.mostFrequent.name }} is currently your most frequent pattern.</p>
+          <p class="card-subtext" ng-if="!d.mistakeSummary.mostFrequent">No mistakes recorded yet.</p>
+        </div>
+        <a href="#!/mistakes" class="btn-modern btn-secondary btn-sm">View Details →</a>
+      </div>
+
+      <div class="mistake-bar-list">
+        <div class="mistake-bar-item" ng-repeat="cat in namedCategories">
+          <div class="mistake-bar-info">
+            <span class="mistake-bar-label">
+              <i class="{{ cat.icon }}" ng-style="{'color': cat.color, 'width': '16px'}"></i>
+              {{ cat.name }}
+            </span>
+            <span class="mistake-bar-count">{{ cat.count }} mistake{{ cat.count === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" ng-style="{'width': ((cat.count / maxCategoryCount) * 100) + '%', 'background-color': cat.color}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-title-bar">
+        <div>
+          <h3 class="card-heading"><i class="fa-solid fa-chart-line"></i> Progress (last 8 weeks)</h3>
+          <p class="card-subtext">Solved problems vs. mistakes per week</p>
+        </div>
+      </div>
+      <div class="chart-wrapper" style="height: 230px;">
+        <canvas dt-chart="progressChartConfig" aria-label="Progress chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommended Practice Section -->
+  <div class="card-panel" style="margin-bottom: 1.5rem;">
+    <div class="card-title-bar">
+      <div>
+        <h3 class="card-heading"><i class="fa-solid fa-bullseye"></i> Recommended Practice</h3>
+        <p class="card-subtext">Chosen by rules from your mistakes, weak topics and unfinished attempts.</p>
+      </div>
+      <a href="#!/problems?recommended=true" class="btn-modern btn-secondary btn-sm">Browse All →</a>
+    </div>
+
+    <div class="empty-inline" ng-if="!d.recommendations.length">
+      <i class="fa-solid fa-trophy"></i> You have solved everything we would recommend right now. Explore the full catalogue!
+    </div>
+    <div class="recommended-grid">
+      <div class="problem-card-mini" ng-repeat="rec in d.recommendations">
+        <div>
+          <div class="problem-card-header">
+            <span class="badge {{ rec.difficulty | difficultyBadge }}">{{ rec.difficulty }}</span>
+            <span class="badge badge-cyan"><i class="fa-solid fa-tag"></i> {{ rec.topic }}</span>
+          </div>
+          <h4 class="problem-card-title" style="margin-top: 0.6rem;">#{{ rec.number }} {{ rec.title }}</h4>
+          <p style="font-size: 0.8rem; color: #94a3b8; margin: 0.35rem 0 0.6rem;">{{ rec.description | plainText | limitTo: 95 }}...</p>
+          <div class="problem-card-reason">
+            <div ng-repeat="r in rec.reasons" class="reason-line" title="Rule {{ r.rule }}">
+              <i class="fa-solid" ng-class="$first ? 'fa-lightbulb' : 'fa-plus'" style="color: var(--cyan);"></i> {{ r.text }}
+            </div>
+          </div>
+        </div>
+        <div class="problem-card-footer">
+          <span class="focus-tags"><span ng-repeat="f in rec.focus">{{ f }}{{ $last ? '' : ' · ' }}</span></span>
+          <button type="button" class="btn-modern btn-primary btn-sm" ng-click="solveProblem(rec.problemId)">Solve →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity Section -->
+  <div class="card-panel">
+    <div class="card-title-bar">
+      <div>
+        <h3 class="card-heading"><i class="fa-solid fa-clock-rotate-left"></i> Recent Submissions</h3>
+        <p class="card-subtext">Your latest attempts and their diagnosis</p>
+      </div>
+      <a href="#!/submissions" class="btn-modern btn-secondary btn-sm">All Submissions →</a>
+    </div>
+
+    <div class="empty-inline" ng-if="!d.recentSubmissions.length">No submissions yet.</div>
+    <div style="overflow-x: auto;" ng-if="d.recentSubmissions.length">
+      <table class="activity-table">
+        <thead>
+          <tr>
+            <th>Problem</th>
+            <th>Verdict</th>
+            <th>Tests</th>
+            <th>When</th>
+            <th>Runtime</th>
+            <th>Mistake Tag</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="s in d.recentSubmissions">
+            <td class="problem-name"><a href="#!/solve/{{ s.problemId }}">{{ s.problemTitle }}</a></td>
+            <td><span class="badge {{ s.status | verdictBadge }}">{{ s.status }}</span></td>
+            <td style="color: #94a3b8; font-family: var(--font-mono);">{{ s.testCasesPassed }}/{{ s.totalTestCases }}</td>
+            <td style="color: #64748b;" title="{{ s.timestamp | date:'medium' }}">{{ s.timestamp | timeAgo }}</td>
+            <td style="font-family: var(--font-mono); color: #cbd5e1;">{{ s.runtime || 'N/A' }}</td>
+            <td>
+              <span class="badge badge-danger" ng-if="s.mistakeCategory">
+                <i class="fa-solid fa-bug"></i> {{ s.mistakeConfidence === 'possible' ? 'Possible: ' : '' }}{{ s.mistakeCategory }}
+              </span>
+              <span style="color: #475569; font-size: 0.78rem;" ng-if="!s.mistakeCategory">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

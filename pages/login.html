@@ -1,0 +1,59 @@
+<!-- Login View -->
+<div class="auth-page">
+  <div class="auth-intro">
+    <div class="brand-logo auth-brand"><span class="brand-bolt">⚡</span><span>DebugTrack</span></div>
+    <h1 class="auth-headline">Turn your mistakes into progress.</h1>
+    <p class="auth-tagline">Solve problems in Java, Python or C++ in a real sandbox, see exactly <em>why</em> a submission failed, and get practice picked for the patterns you repeat.</p>
+    <ul class="auth-points">
+      <li><i class="fa-solid fa-microchip"></i> Code runs on Judge0, never on our server</li>
+      <li><i class="fa-solid fa-magnifying-glass-chart"></i> Explainable, rule-based mistake detection</li>
+      <li><i class="fa-solid fa-bullseye"></i> Recommendations that explain their reasons</li>
+    </ul>
+  </div>
+
+  <div class="auth-card">
+    <h2 class="auth-title">Log in</h2>
+    <p class="auth-subtitle">Welcome back! Enter your details to continue.</p>
+
+    <div class="form-alert" ng-if="formError" role="alert">
+      <i class="fa-solid fa-circle-exclamation"></i> {{ formError }}
+    </div>
+
+    <form name="loginForm" ng-submit="submit()" novalidate class="form-stack">
+      <div>
+        <label class="form-label" for="login-email">Email</label>
+        <input id="login-email" type="email" class="input-modern input-plain" ng-class="{'input-invalid': errors.email}"
+               ng-model="form.email" autocomplete="email" placeholder="you@college.edu" autofocus>
+        <div class="field-error" ng-if="errors.email">{{ errors.email }}</div>
+      </div>
+
+      <div>
+        <label class="form-label" for="login-password">Password</label>
+        <div class="password-field">
+          <input id="login-password" type="{{ showPassword ? 'text' : 'password' }}" class="input-modern input-plain" ng-class="{'input-invalid': errors.password}"
+                 ng-model="form.password" autocomplete="current-password" placeholder="Your password">
+          <button type="button" class="password-toggle" ng-click="showPassword = !showPassword" aria-label="Show or hide password">
+            <i class="fa-regular" ng-class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+          </button>
+        </div>
+        <div class="field-error" ng-if="errors.password">{{ errors.password }}</div>
+      </div>
+
+      <button type="submit" class="btn-modern btn-primary btn-block" ng-disabled="submitting">
+        <i class="fa-solid" ng-class="submitting ? 'fa-spinner fa-spin' : 'fa-right-to-bracket'"></i>
+        {{ submitting ? 'Logging in...' : 'Log in' }}
+      </button>
+    </form>
+
+    <div class="demo-hint">
+      <i class="fa-solid fa-graduation-cap"></i>
+      <div>
+        <strong>Presentation demo account</strong>
+        <div>demo@debugtrack.dev &middot; Demo@1234</div>
+      </div>
+      <button type="button" class="btn-modern btn-secondary btn-sm" ng-click="useDemo()">Fill in</button>
+    </div>
+
+    <p class="auth-switch">New to DebugTrack? <a href="#!/register">Create an account</a></p>
+  </div>
+</div>
