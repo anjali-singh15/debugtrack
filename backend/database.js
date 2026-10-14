@@ -48,6 +48,7 @@ const SCHEMA = `
     role TEXT NOT NULL DEFAULT 'Student',
     university TEXT,
     settings TEXT,
+    googleId TEXT,
     createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -99,7 +100,7 @@ const SCHEMA = `
 
 // Columns added after Review 1. Older database files get them via ALTER TABLE.
 const ADDITIVE_COLUMNS = {
-  users: { passwordHash: 'TEXT', role: "TEXT DEFAULT 'Student'", university: 'TEXT', settings: 'TEXT', createdAt: 'TEXT' },
+  users: { passwordHash: 'TEXT', role: "TEXT DEFAULT 'Student'", university: 'TEXT', settings: 'TEXT', createdAt: 'TEXT', googleId: 'TEXT' },
   problems: { number: 'INTEGER', focus: 'TEXT', signature: 'TEXT', mistakeProneArea: 'TEXT', referenceSolution: 'TEXT' },
   submissions: {
     runtimeMs: 'INTEGER', memoryKb: 'INTEGER', mistakeConfidence: 'TEXT',
@@ -127,6 +128,7 @@ async function ensureColumns() {
 async function initSchema() {
   await exec(SCHEMA);
   await ensureColumns();
+  await run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google ON users(googleId) WHERE googleId IS NOT NULL');
 }
 
 const ready = (async () => {

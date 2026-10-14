@@ -5,6 +5,7 @@ const { signToken, requireAuth } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
 const { HttpError, EMAIL_RE, str, validatePassword, publicUser } = require('../utils/http');
 const { DEFAULT_SETTINGS } = require('./profile');
+const googleAuth = require('../services/googleAuthService');
 
 const router = express.Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many login attempts. Please wait a few minutes and try again.' });
@@ -63,6 +64,55 @@ router.post('/login', authLimiter, async (req, res) => {
     throw new HttpError(401, 'Invalid email or password.');
   }
   res.json({ token: signToken(user), user: publicUser(user) });
+});
+
+// GET /api/auth/config - public settings the login page needs
+router.get('/config', (req, res) => {
+  res.json({ googleClientId: googleAuth.isConfigured() ? googleAuth.CLIENT_ID : null });
+});
+
+// POST /api/auth/google - exchange a Google ID token for a DebugTrack session
+router.post('/google', authLimiter, async (req, res) => {
+  if (!googleAuth.isConfigured()) {
+    throw new HttpError(503, 'Google sign-in is not enabled on this server.');
+  }
+  const credential = str(req.body && req.body.credential);
+  if (!credential) {
+    throw new HttpError(400, 'Google credential is required.');
+  }
+  const profile = await googleAuth.verifyIdToken(credential);
+  if (!profile) {
+    throw new HttpError(401, 'Google sign-in failed. Please try again.');
+  }
+  if (!profile.emailVerified) {
+    throw new HttpError(401, 'Your Google account email is not verified.');
+  }
+
+  let user = await get('SELECT * FROM users WHERE googleId = ?', [profile.googleId]);
+  let created = false;
+  if (!user) {
+    const existing = await get('SELECT * FROM users WHERE email = ?', [profile.email]);
+    let userId;
+    if (existing) {
+      if (existing.googleId) {
+        throw new HttpError(409, 'This email is already linked to a different Google account.');
+      }
+      // Google has verified the address, so link it to the existing email/password account
+      await run('UPDATE users SET googleId = ? WHERE id = ?', [profile.googleId, existing.id]);
+      userId = existing.id;
+    } else {
+      const name = (profile.name || profile.email.split('@')[0]).slice(0, 60);
+      // Google-only accounts have no password; an empty hash never matches in /login
+      const { lastID } = await run(
+        'INSERT INTO users (name, email, passwordHash, role, settings, googleId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [name, profile.email, '', 'Student', JSON.stringify(DEFAULT_SETTINGS), profile.googleId, new Date().toISOString()]
+      );
+      created = true;
+      userId = lastID;
+    }
+    user = await get('SELECT * FROM users WHERE id = ?', [userId]);
+  }
+  res.status(created ? 201 : 200).json({ token: signToken(user), user: publicUser(user), created });
 });
 
 // GET /api/auth/me

@@ -2112,6 +2112,15 @@ body.is-resizing-row * {
 .demo-hint > div { flex: 1; }
 .demo-hint strong { color: var(--text-bright); display: block; }
 
+/* Sign in with Google (button itself is rendered by Google Identity Services) */
+.auth-divider {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin: 1.25rem 0 1rem;
+  color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-muted); }
+.google-signin-button { display: flex; justify-content: center; min-height: 44px; }
+
 /* ---------- Forms ---------- */
 .form-stack { display: flex; flex-direction: column; gap: 1rem; }
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

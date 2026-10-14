@@ -8,3 +8,8 @@ backend/.jwt-secret
 
 # Review-1 mock data, no longer used
 js/data.js.bak
+
+# Local database backups
+backend/*.backup*.db
+backend/*.backup*.db-shm
+backend/*.backup*.db-wal

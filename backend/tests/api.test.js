@@ -17,6 +17,7 @@ const { seed } = require('../seed');
 const { start } = require('../server');
 const { SECRET } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
+const googleAuth = require('../services/googleAuthService');
 
 const SKIP_JUDGE0 = process.env.SKIP_JUDGE0 === '1';
 let server;
@@ -138,6 +139,82 @@ test('protected APIs reject missing, invalid and expired tokens', async () => {
 });
 
 // ------------------------------------------------------------------ PROBLEMS
+// ------------------------------------------------------------------ GOOGLE SIGN-IN
+// Token verification is stubbed: the real check needs Google's signing keys and a live client id.
+function stubGoogle(profiles) {
+  const original = { isConfigured: googleAuth.isConfigured, verifyIdToken: googleAuth.verifyIdToken, CLIENT_ID: googleAuth.CLIENT_ID };
+  googleAuth.isConfigured = () => true;
+  googleAuth.CLIENT_ID = 'test-client.apps.googleusercontent.com';
+  googleAuth.verifyIdToken = async (token) => profiles[token] || null;
+  return () => Object.assign(googleAuth, original);
+}
+
+test('Google sign-in is disabled without GOOGLE_CLIENT_ID', async () => {
+  let r = await api('GET', '/api/auth/config');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.googleClientId, null);
+  r = await api('POST', '/api/auth/google', { credential: 'anything' });
+  assert.equal(r.status, 503);
+});
+
+test('Google sign-in creates, reuses and links accounts', async (t) => {
+  const restore = stubGoogle({
+    carol: { googleId: 'g-carol', email: 'carol@example.com', emailVerified: true, name: 'Carol Google' },
+    alice: { googleId: 'g-alice', email: 'alice@example.com', emailVerified: true, name: 'Alice G' },
+    unverified: { googleId: 'g-x', email: 'x@example.com', emailVerified: false, name: 'X' },
+    hijack: { googleId: 'g-other', email: 'alice@example.com', emailVerified: true, name: 'Not Alice' }
+  });
+  t.after(restore);
+
+  let r = await api('GET', '/api/auth/config');
+  assert.equal(r.body.googleClientId, 'test-client.apps.googleusercontent.com');
+
+  r = await api('POST', '/api/auth/google', {});
+  assert.equal(r.status, 400);
+  r = await api('POST', '/api/auth/google', { credential: 'forged' });
+  assert.equal(r.status, 401);
+  r = await api('POST', '/api/auth/google', { credential: 'unverified' });
+  assert.equal(r.status, 401);
+
+  // New user
+  r = await api('POST', '/api/auth/google', { credential: 'carol' });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.created, true);
+  assert.equal(r.body.user.email, 'carol@example.com');
+  assert.equal(r.body.user.hasPassword, false);
+  assert.equal(r.raw.includes('passwordHash'), false);
+  const carolId = r.body.user.id;
+  const me = await api('GET', '/api/auth/me', undefined, r.body.token);
+  assert.equal(me.status, 200);
+
+  // Same Google account again: same user, no duplicate
+  r = await api('POST', '/api/auth/google', { credential: 'carol' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.created, false);
+  assert.equal(r.body.user.id, carolId);
+
+  // A Google-only account cannot log in with an empty password or change a password
+  r = await api('POST', '/api/auth/login', { email: 'carol@example.com', password: '' });
+  assert.notEqual(r.status, 200);
+  const carolToken = (await api('POST', '/api/auth/google', { credential: 'carol' })).body.token;
+  r = await api('PUT', '/api/profile/password', { currentPassword: 'x', newPassword: 'newpass123', confirmPassword: 'newpass123' }, carolToken);
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /Google/);
+
+  // Existing email/password account gets linked, and the password keeps working
+  r = await api('POST', '/api/auth/google', { credential: 'alice' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.user.email, alice.email);
+  assert.equal(r.body.user.googleLinked, true);
+  assert.equal(r.body.user.hasPassword, true);
+  r = await api('POST', '/api/auth/login', { email: alice.email, password: alice.password });
+  assert.equal(r.status, 200);
+
+  // A different Google account cannot take over an already-linked email
+  r = await api('POST', '/api/auth/google', { credential: 'hijack' });
+  assert.equal(r.status, 409);
+});
+
 test('problem catalogue covers all required topics and has per-user status', async () => {
   const r = await api('GET', '/api/problems', undefined, aliceToken);
   assert.equal(r.status, 200);
