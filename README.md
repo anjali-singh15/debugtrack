@@ -130,6 +130,8 @@ All endpoints return JSON. Endpoints marked 🔒 require `Authorization: Bearer 
 | GET | `/api/health` | Server & database status |
 | POST | `/api/auth/register` | Create account `{name, email, password, confirmPassword}` → `{token, user}` |
 | POST | `/api/auth/login` | `{email, password}` → `{token, user}` |
+| POST | `/api/auth/google` | Sign in with Google `{credential}` (Google ID token) → `{token, user, created}` |
+| GET | `/api/auth/config` | Public login settings (`googleClientId`, or `null` when Google sign-in is off) |
 | GET 🔒 | `/api/auth/me` | Current user |
 | POST | `/api/auth/logout` | Stateless; client discards its token |
 | GET 🔒 | `/api/problems` | Catalogue with the user's status, acceptance, recommended flag + reason |
@@ -247,7 +249,85 @@ Optional environment variables:
 | `JUDGE0_JAVA_ID` / `JUDGE0_PYTHON_ID` / `JUDGE0_CPP_ID` | 91 / 71 / 54 | Judge0 language ids |
 | `JWT_SECRET` | auto-generated in `backend/.jwt-secret` | Token signing secret |
 | `JWT_EXPIRES_IN` | `12h` | Token lifetime |
+| `GOOGLE_CLIENT_ID` | — | Enables **Sign in with Google** (see below) |
 | `DB_PATH` | `backend/debugtrack.db` | SQLite file location |
+
+### Sign in with Google (optional)
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an
+   **OAuth client ID** of type **Web application**.
+2. Under **Authorized JavaScript origins** add `http://localhost:3000` (and `http://localhost`;
+   add your real domain when deploying). No redirect URI is needed.
+3. Start the server with the client id:
+   ```bash
+   GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com npm start
+   ```
+
+The login and register pages then show a Google button. The browser receives a Google ID token,
+the backend verifies its signature, audience and expiry with `google-auth-library`, and issues the
+usual DebugTrack JWT. A first-time Google user gets a new account. A Google account whose verified
+email matches an existing account is linked to it, so both the password and Google keep working.
+Without `GOOGLE_CLIENT_ID` the button is hidden and nothing else changes.
+
+### Bulk Problem Import
+
+Problems can be imported from a JSON file instead of being written into `data/problems.js` by
+hand. The import is **command-line only**: DebugTrack has no admin role, so a web endpoint would be
+open to every student, while running the script requires shell access to the server.
+
+```bash
+cd debugtrack/backend
+npm run import:problems -- data/import-sample.json --dry-run   # validate + preview, writes nothing
+npm run import:problems -- data/import-sample.json             # verify on Judge0, then insert
+npm run import:problems -- my-problems.json --skip-verify      # offline: insert UNVERIFIED
+```
+
+Restart the server afterwards: the running server caches the problem list.
+
+**File format.** Either a JSON array of problems or `{ "source": {...}, "problems": [...] }`.
+[`backend/data/import-sample.json`](backend/data/import-sample.json) contains four complete
+problems (int[] → int, two Strings → boolean, an in-place void method, a linked list).
+
+| Field | Required | Notes |
+|---|---|---|
+| `id` | yes | Stable unique slug, lowercase letters/digits/hyphens (e.g. `mbpp-12`). Used for duplicate detection. |
+| `title`, `description` | yes | Description supports `inline code` and **bold**. |
+| `difficulty` | yes | `Easy`, `Medium` or `Hard` |
+| `topic` | yes | One of the 11 existing topics (Arrays, Strings, Hashing, Searching, Sorting, Linked List, Stack, Queue, Trees, Graphs, Dynamic Programming) |
+| `signature` | yes | `{ "method": "twoSum", "params": [["nums", "int[]"], ["target", "int"]], "returns": "int[]" }`. Param types: `int, boolean, String, int[], int[][], String[], char[][], ListNode, TreeNode`. Return types: `int, boolean, String, int[], int[][], ListNode, List<List<Integer>>, void`. A `void` method needs `"inplace": <index of the int[] param it modifies>`. |
+| `referenceSolution` | yes | Java `class Solution` that solves every test (used only for verification, never sent to students). |
+| `tests` | yes | `[{ "args": [[2, 7, 11, 15], 9], "expected": [0, 1], "hidden": false, "edge": "label", "compare": "unordered" }]`. `args`: one JSON value per parameter (ListNode: array of values; TreeNode: level-order array with `null`; char[][]: array of row strings). `expected`: the return value (for `void`, the array after modification). At least one test must be visible. `edge` labels enable Boundary Conditions detection. |
+| `focus` | no | Mistake categories the problem trains (used by recommendations). |
+| `examples`, `constraints`, `hints`, `mistakeProneArea` | no | Examples default to the first visible tests. |
+| `starterCode` | no | Java starter; generated from the signature when omitted (Python/C++ starters are always generated). |
+
+The Java test calls, display inputs and starter code are generated from `signature` + `args` and
+round-tripped through the same parser the curated bank uses, so Java, Python and C++ run identical
+tests.
+
+**What happens on import**
+
+1. **Validation.** Malformed JSON aborts the import. Each problem is checked for required fields,
+   types and supported signatures; invalid problems are listed with every reason and skipped.
+2. **Duplicates.** A problem whose `id` or title (case-insensitive) already exists in the
+   database, or earlier in the same file, is skipped. Existing problems are never updated.
+3. **Judge0 verification.** The Java reference must be **Accepted on all tests** (sample + hidden)
+   and the generated starter must compile in Java, Python and C++. Problems that fail are not
+   inserted. If Judge0 is unreachable, the import stops and nothing is inserted.
+4. **Insertion.** All verified problems are inserted in **one transaction** with plain `INSERT`
+   (never upsert) and numbered after the existing ones. Any database error rolls back the batch.
+
+The summary reports imported, duplicate, invalid and failed-verification counts. The exit code is
+0 only when every problem in the file was imported.
+
+**Licences.** Only import problems you are allowed to use: your own, your institution's, or open
+datasets whose licence permits reuse (for example MBPP, CC BY 4.0). Record the dataset and licence
+in `"source": { "name", "license", "url" }` and give the attribution the licence requires. Do
+not scrape LeetCode, HackerRank or similar platforms; their content is copyrighted and their
+terms forbid it.
+
+**Note:** `npm run setup` / `npm run seed:reset` recreate the database from `data/problems.js`
+and therefore remove imported problems. Keep your import files and re-run the import afterwards.
 
 ## 12. Running the Application
 
@@ -283,6 +363,9 @@ npm run verify:problems      # on Judge0: every Java reference solution (all 195
   validation, duplicate email, login, invalid/forged/expired tokens, protected routes, hidden-test
   secrecy, run vs. submit, Accepted / Wrong Answer / Compilation Error / Runtime Error / TLE,
   user isolation, analytics, profile, settings, rate limiting, and that the DB file is not served.
+- `tests/problemImport.test.js`: bulk import with a throw-away database and a mocked Judge0:
+  valid import, malformed JSON, missing fields, wrong types, duplicates (database and in-file),
+  transaction rollback on a failed insert, verification pass/fail, Judge0 outage, and the CLI.
 
 The manual + browser test checklist and its results are in **[TESTING.md](TESTING.md)**.
 
@@ -306,10 +389,11 @@ debugtrack/
     ├── data/problems.js        Problem bank (statements, Java starter code, tests, reference solutions)
     ├── data/signatures.js      Language-neutral method signatures (used to generate Python/C++ calls & starters)
     ├── data/referenceSolutions.js  Python/C++ references for harness verification
+    ├── data/import-sample.json Sample file for the bulk problem import
     ├── middleware/             auth.js (JWT), rateLimit.js
     ├── routes/                 auth, problems, submissions, execution, insights, profile
-    ├── services/               problem, analytics, recommendation, submission
-    ├── scripts/                seedDemo.js, verifyProblems.js
+    ├── services/               problem, analytics, recommendation, submission, problemImport
+    ├── scripts/                seedDemo.js, verifyProblems.js, importProblems.js
     └── tests/                  node:test suites
 ```
 
@@ -324,6 +408,9 @@ debugtrack/
 - Hidden tests and reference solutions are never sent to the browser.
 - In-memory **rate limiting** on login/register (30 per 15 min) and run/submit (20 per minute).
 - Generic login error ("Invalid email or password") to avoid account enumeration.
+- Google sign-in tokens are verified server-side (signature, audience, expiry); only Google-verified
+  emails are accepted or linked, and an email already linked to one Google account cannot be taken
+  over by another. Google-only accounts have no password, so password login cannot reach them.
 - The JWT is kept in `localStorage` (simple for a SPA calling a separate API). The trade-off is
   that an XSS bug could read it, so templates rely on AngularJS escaping, and the only HTML
   rendering (`richText` filter) escapes all input first.

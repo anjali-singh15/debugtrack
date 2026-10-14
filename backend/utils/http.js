@@ -35,7 +35,9 @@ function publicUser(u) {
     university: u.university || '',
     avatarInitials: initials(u.name),
     firstName: String(u.name || '').split(/\s+/)[0],
-    createdAt: u.createdAt || null
+    createdAt: u.createdAt || null,
+    hasPassword: !!u.passwordHash,
+    googleLinked: !!u.googleId
   };
 }
 

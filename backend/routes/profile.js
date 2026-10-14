@@ -92,6 +92,9 @@ router.put('/profile/password', async (req, res) => {
     throw new HttpError(400, 'All password fields are required.');
   }
   const user = await get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  if (!user.passwordHash) {
+    throw new HttpError(400, 'This account signs in with Google and has no password to change.');
+  }
   if (!(await bcrypt.compare(String(currentPassword), user.passwordHash))) {
     throw new HttpError(400, 'Current password is incorrect.', { currentPassword: 'Current password is incorrect.' });
   }

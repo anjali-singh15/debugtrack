@@ -6,12 +6,15 @@
 
 const app = angular.module('debugTrackApp', ['ngRoute']);
 
-// When the page is served by the Express backend (port 3000) use same-origin calls;
-// otherwise (e.g. `python3 -m http.server 8080`) talk to the backend on localhost:3000.
+// The Express backend serves the frontend, so API calls are same-origin: locally on :3000 and on
+// any deployed domain. Only a separate local static server (e.g. `python3 -m http.server 8080`)
+// or a file:// page talks to the backend on localhost:3000.
 app.constant('API_BASE', (function() {
   const loc = window.location;
-  if (loc.protocol.startsWith('http') && loc.port === '3000') return '/api';
-  return 'http://localhost:3000/api';
+  const isLocalHost = loc.hostname === 'localhost' || loc.hostname === '127.0.0.1';
+  if (!loc.protocol.startsWith('http')) return 'http://localhost:3000/api';
+  if (isLocalHost && loc.port !== '3000') return 'http://localhost:3000/api';
+  return '/api';
 })());
 
 // Routing Configuration (routes marked `public` are reachable without logging in)
@@ -116,6 +119,16 @@ app.factory('AuthService', ['$http', '$rootScope', 'API_BASE', 'StorageService',
       return $http.post(API_BASE + '/auth/register', form)
         .then(function(res) { return setSession(res.data); });
     },
+    // Resolves to the Google client id, or null when the server has Google sign-in disabled
+    getGoogleClientId: function() {
+      return $http.get(API_BASE + '/auth/config')
+        .then(function(res) { return res.data.googleClientId || null; })
+        .catch(function() { return null; });
+    },
+    loginWithGoogle: function(credential) {
+      return $http.post(API_BASE + '/auth/google', { credential: credential })
+        .then(function(res) { return { user: setSession(res.data), created: !!res.data.created }; });
+    },
     refreshUser: function() {
       return $http.get(API_BASE + '/auth/me').then(function(res) {
         StorageService.set(USER_KEY, JSON.stringify(res.data.user));
@@ -154,7 +167,7 @@ app.factory('AuthInterceptor', ['$q', '$injector', '$rootScope', 'API_BASE', 'St
     },
     responseError: function(rejection) {
       const url = (rejection.config && rejection.config.url) || '';
-      const isAuthCall = /\/auth\/(login|register)$/.test(url);
+      const isAuthCall = /\/auth\/(login|register|google)$/.test(url);
       if (rejection.status === 401 && !isAuthCall && !redirecting) {
         redirecting = true;
         const AuthService = $injector.get('AuthService');

@@ -196,6 +196,45 @@ function($scope, $location, AuthService, ApiService, ToastService) {
     }).finally(function() { $scope.submitting = false; });
   };
 
+  // Google Identity Services renders its own button; the callback runs outside Angular's digest
+  $scope.googleEnabled = false;
+  function renderGoogleButton(clientId, attempt) {
+    const el = document.getElementById('google-signin-button');
+    if (!el) return;
+    if (!(window.google && google.accounts && google.accounts.id)) {
+      // The GIS script loads async; give it a few seconds before giving up
+      if (attempt < 20) setTimeout(function() { renderGoogleButton(clientId, attempt + 1); }, 250);
+      else $scope.$applyAsync(function() { $scope.googleEnabled = false; });
+      return;
+    }
+    google.accounts.id.initialize({ client_id: clientId, callback: onGoogleCredential, ux_mode: 'popup' });
+    google.accounts.id.renderButton(el, {
+      theme: 'filled_black', size: 'large', shape: 'pill', width: 320,
+      text: $scope.isRegister ? 'signup_with' : 'signin_with'
+    });
+  }
+
+  function onGoogleCredential(response) {
+    $scope.$apply(function() {
+      $scope.formError = null;
+      $scope.errors = {};
+      $scope.submitting = true;
+    });
+    AuthService.loginWithGoogle(response.credential).then(function(result) {
+      ToastService.success(result.created ? 'Welcome to DebugTrack, ' + result.user.firstName + '!' : 'Welcome back, ' + result.user.firstName + '!');
+      $location.path('/').search({});
+    }).catch(function(err) {
+      $scope.formError = ApiService.errorMessage(err, 'Google sign-in failed.');
+    }).finally(function() { $scope.submitting = false; });
+  }
+
+  AuthService.getGoogleClientId().then(function(clientId) {
+    if (!clientId) return;
+    $scope.googleEnabled = true;
+    // Wait for ng-if to put the container in the DOM
+    setTimeout(function() { renderGoogleButton(clientId, 0); });
+  });
+
   $scope.useDemo = function() {
     $scope.form.email = 'demo@debugtrack.dev';
     $scope.form.password = 'Demo@1234';
