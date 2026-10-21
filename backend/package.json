@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:deploy": "node scripts/prepareDeploy.js && node server.js",
     "seed": "node seed.js",
     "seed:reset": "node seed.js --reset",
     "seed:demo": "node scripts/seedDemo.js",

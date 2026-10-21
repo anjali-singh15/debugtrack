@@ -18,6 +18,8 @@ const FRONTEND_DIR = path.join(__dirname, '..');
 
 const app = express();
 app.disable('x-powered-by');
+// Behind a hosting proxy (e.g. Render) the client IP comes from X-Forwarded-For; rate limits use it.
+if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '200kb' }));
 app.use((req, res, next) => {
